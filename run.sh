@@ -1,0 +1,1 @@
+python src/floppy/__main__.py

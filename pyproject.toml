@@ -1,0 +1,24 @@
+[project]
+name = "floppy"
+version = "0.1.0"
+description = "Jogo de blocos 3D roguelike com pipeline gráfico próprio sobre Pyxel"
+requires-python = ">=3.12"
+dependencies = [
+    "pyxel>=2.0",
+    "numpy>=1.26",
+    "pillow>=10.0",
+]
+
+[project.scripts]
+floppy = "floppy.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
