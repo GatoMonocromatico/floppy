@@ -54,8 +54,11 @@ O renderizador é uma reimplementação em software daquilo que uma GPU faria:
 transformação de vértices, recorte contra o plano próximo, divisão perspectiva,
 mapeamento para coordenadas de tela, rasterização por caixa envolvente,
 *z-buffer* e estágio de fragmento. Tudo é escrito de forma **vetorizada com
-NumPy**, operando sobre matrizes de pixels inteiras em vez de laços em Python,
-que seria ordens de grandeza mais lento. A persistência de hacks, recordes e
+NumPy**: os triângulos do quadro inteiro são projetados de uma vez, agrupados
+pelo tamanho da caixa envolvente e rasterizados grupo a grupo, e todos os
+fragmentos são resolvidos contra o *z-buffer* numa única operação
+(`np.maximum.at`). Um laço em Python por triângulo seria ordens de grandeza mais
+lento. A persistência de hacks, recordes e
 configuração de teclas é feita em **arquivos de texto**, sem banco de dados. O
 código é versionado em Git.
 
@@ -66,8 +69,9 @@ A arquitetura é dividida em camadas independentes (`renderer/`, `game/`, `ai/`,
 chegam à tela e o renderizador não sabe o que é uma peça. A IA
 adversária resolve um problema de engenharia clássico: **orçamento de tempo por
 quadro**. Em vez de buscar a melhor jogada de uma vez e travar a imagem, ela faz
-uma busca em feixe (*beam search*) incremental, executando um número limitado de
-simulações por quadro e retomando de onde parou no quadro seguinte.
+uma busca em largura sobre as entradas (cada posição que a peça alcança com
+movimentos, giros e *kicks*) incremental, executando um número limitado de
+estados por quadro e retomando de onde parou no quadro seguinte.
 
 ### Arts — Artes
 
@@ -103,7 +107,21 @@ pip install pyxel numpy pillow
 ./run.sh
 ```
 
+O progresso (árvore de magia, pontos, inimigo atual, disquetes) fica em
+`floppy.save`, um arquivo de texto; outro caminho pode ser passado como primeiro
+argumento.
+
 ### Controles
+
+Na sala:
+
+| Tecla | Ação |
+|-------|------|
+| setas | andar / virar |
+| `Enter` | sentar no arcade / levantar |
+| `Tab` | menu da magia (árvore de habilidades) |
+
+Sentado no arcade:
 
 | Tecla | Ação |
 |-------|------|
@@ -111,21 +129,32 @@ pip install pyxel numpy pillow
 | `D` / `C` | girar no sentido horário / anti-horário |
 | `A` | girar 180° |
 | `B` | queda suave |
+| `I` | queda suave instantânea |
 | `S` | queda instantânea |
-| `K` | reservar peça |
+| `K` / `U` | reservar peça (segunda reserva com a magia) |
+
+### Como a partida anda
+
+O arcade começa como um jogo de blocos comum, com peças planas. A primeira *quadra*
+(quatro linhas com a peça I) desperta a magia: as peças saltam da tela em 3D e o
+primeiro inimigo aparece ao lado do gabinete. Derrotar o inimigo *n* dá *n* pontos
+de magia e a escolha de um entre três disquetes (*hacks*), que só funcionam com
+leitores comprados na árvore. Perder apaga os disquetes e volta ao inimigo 1; a
+árvore fica.
 
 ## Estrutura do projeto
 
 ```
 src/floppy/
-├── renderer/     pipeline gráfico: câmera, matrizes, recorte, rasterizador,
-│                 z-buffer, textura, luz, geometria 2D
-├── shaders/      estágios de vértice e fragmento executados na CPU
-├── game/         regras: peças, grade, rotações, ataque, hacks, animações
-├── ai/           oponente: simulação em bitboard, heurística, busca em feixe
-├── platform/     janela, entrada de teclado e temporização
-└── assets/       texturas e modelos
-tests/            testes automatizados por módulo
+├── __main__.py   janela, câmera, entrada, menus e HUD
+├── scene.py      paleta, iluminação e geometria: sala, gabinete, tabuleiros
+├── renderer/     pipeline gráfico em lote (batch.py) e matrizes (math3d.py)
+├── game/
+│   ├── rules.py  regras: bitboard, peças, SRS, spins, ataque, barra, lixo
+│   ├── ai.py     oponente: busca por entradas, perfis e heurística
+│   └── play.py   controle da peça, luta, progressão, árvore e salvamento
+└── assets/       texturas
+tests/            testes das regras
 ```
 
 ## Licença
