@@ -19,7 +19,6 @@ def _as_vec2(v: npt.ArrayLike, name: str = "value") -> Vec:
     return a
 
 def _as_uv(v: npt.ArrayLike, name: str = "value") -> Vec:
-    """Texture coordinate as (u, v, bank). A 2-tuple is taken as image bank 0."""
     a = np.asarray(v, dtype=np.float32)
     if a.shape == (2,):
         a = np.array([a[0], a[1], 0.0], dtype=np.float32)
