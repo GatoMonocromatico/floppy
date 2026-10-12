@@ -10,32 +10,22 @@ def look_from_to(*, position: npt.ArrayLike,
     target = _as_vec3(looking_to, "looking_to")
     up = _as_vec3(up_direction, "up_direction")
 
-    # safety measures
     normalize_in_place(up)
 
     looking_direction = normalize(target - cam_origin)
-
-    if (abs(float(np.dot(looking_direction, up))) > KEPSILON):
-        raise ValueError(f"looking_direction and up are not orthogonal")
 
     view_matrix = np.zeros((4, 4))
 
     right = normalize(np.cross(looking_direction, up))
 
-    # inverse of R (1,1)
     view_matrix[:3, :3] = [right,
                            np.cross(right, looking_direction),
                            -looking_direction]
-    # -Re (1,2)
     view_matrix[:3, 3] = -view_matrix[:3, :3] @ cam_origin
 
-    # (2,1) is already all zeros
 
-    # 1 (2,2)
     view_matrix[3, 3] = 1
 
-    # view matrix is the inverse of the matrix that expresses
-    # camera coordinates into the world space
     return view_matrix
 
 def create_proj_matrix(fov: int, ratio: float, near_plane: float, far_plane: float) -> Matrix:
@@ -54,13 +44,11 @@ def create_proj_matrix(fov: int, ratio: float, near_plane: float, far_plane: flo
 def normalize_in_place(vector: npt.ArrayLike) -> None:
     module = 0
 
-    # Calculates vetor module
     for e in vector:
         module += e ** 2
 
     module = module ** 0.5
 
-    # Normalizes vector
     for i in range(len(vector)):
         vector[i] /= module
 
@@ -69,7 +57,6 @@ def normalize(vector: npt.ArrayLike) -> Vec:
 
     m = module(v)
 
-    # Normalizes vector
     v /= m
 
     return v
@@ -79,7 +66,6 @@ def module(vector: npt.ArrayLike) -> float:
 
     total = 0.0
 
-    # Calculates vetor module
     for e in v:
         total += float(e) ** 2
 
