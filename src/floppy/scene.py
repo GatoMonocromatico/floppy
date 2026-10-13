@@ -1,6 +1,6 @@
 import numpy as np
 
-from game.rules import GARBAGE, HIDDEN_ROWS, NULL, PIECE_TABLE, cells
+from game.rules import GARBAGE, GARBAGE_DELAY, HIDDEN_ROWS, NULL, PIECE_TABLE, cells
 
 # 0..15 = art colours, then 4 shade ramps per material
 ART_PALETTE = [
@@ -38,9 +38,12 @@ def color(material, shade):
 
 LIGHT = np.array([0.0, 2.45, 1.1], np.float32)
 AMBIENT = 0.28
+LIGHTING = True
 
 
 def shade_tris(tris, materials, emissive=None):
+    if not LIGHTING:
+        return (16 + np.asarray(materials) * 4 + 3).astype(np.uint8)
     a, b, c = tris[:, 0], tris[:, 1], tris[:, 2]
     n = np.cross(b - a, c - a)
     n /= np.linalg.norm(n, axis=1, keepdims=True) + 1e-9
@@ -181,8 +184,8 @@ def portal_backing(rows):
     s = PORTAL_SCREEN
     top = WELL_V - (rows - HIDDEN_ROWS) * CELL
     m = Mesh()
-    m.add(s.rect(WELL_U - 6, top - 6, WELL_U + 10 * CELL + 6, WELL_V + 6, -1.0), PORTAL, True)
-    m.add(s.rect(WELL_U - 2, top - 2, WELL_U + 10 * CELL + 2, WELL_V + 2, -0.5), 1, True)
+    m.add(s.rect(WELL_U - 10, top - 6, WELL_U + 10 * CELL + 6, WELL_V + 6, -1.0), PORTAL, True)
+    m.add(s.rect(WELL_U - 6.5, top - 2, WELL_U + 10 * CELL + 2, WELL_V + 2, -0.5), 1, True)
     tris, _ = m.build()
     cols = np.full(len(tris), color(PORTAL, 1), np.uint8)
     cols[2:] = 0
@@ -251,6 +254,8 @@ class BoardDraw:
         self.tris += s.rect(WELL_U - 1, top - 1.5, WELL_U + 10 * CELL + 1, top - 0.5, 0.3)
         self.cols += [7, 7]
 
+        self.incoming(s, g, WELL_V - top)
+
         filled = {(x, y) for y in range(rows) for x in range(board.num_columns) if board.occupied(x, y)}
         for x, y in filled:
             mat = board.colors[y][x]
@@ -270,6 +275,26 @@ class BoardDraw:
                 self.cols += [color(g.shape, 0)] * 2
         fall = fighter.fall_fraction() if show_side else 0.0
         self.piece(s, [uv(x, y, fall) for x, y in cells(g.shape, g.st)], CELL, g.shape, magic)
+
+    def incoming(self, s, g, height):
+        # garbage meter left of the well, oldest chunk at the bottom
+        u0, u1 = WELL_U - 5.5, WELL_U - 2.0
+        self.tris += s.rect(u0, WELL_V - height, u1, WELL_V, 0.1)
+        self.cols += [color(GARBAGE, 0)] * 2
+        v = WELL_V
+        for chunk in g.incoming:
+            if v <= WELL_V - height:
+                break
+            top = max(WELL_V - height, v - chunk.lines * CELL)
+            if chunk.ready():
+                mat, shade = 3, 3 if int(-chunk.wait * 6) % 2 == 0 else 1
+            elif chunk.wait < GARBAGE_DELAY * 0.4:
+                mat, shade = 5, 3
+            else:
+                mat, shade = GARBAGE, 2
+            self.tris += s.rect(u0, top + 0.6, u1, v, 0.3)
+            self.cols += [color(mat, shade)] * 2
+            v = top
 
     def preview(self, s, shape, box, size, magic):
         pts = PIECE_TABLE[shape][0]

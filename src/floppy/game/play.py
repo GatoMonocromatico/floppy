@@ -182,7 +182,11 @@ class Run:
         self.discovered = False
         self.enemy = 1
         self.disks = []
+        # 0 none, 1 intro seen, 2 hacks seen
+        self.tutorial = 0
         self.load()
+        self.lesson = None
+        self.lesson_step = 0
 
         self.phase = "dormant"
         self.reward = None
@@ -235,6 +239,15 @@ class Run:
         self.fresh(self.ai)
         self.say(f"ENEMY {n}: {self.foe['profile'].upper()}")
 
+    def teach(self, lesson):
+        self.lesson = lesson
+        self.lesson_step = 0
+
+    def end_lesson(self):
+        self.tutorial = max(self.tutorial, 2 if self.lesson == "hacks" else 1)
+        self.lesson = None
+        self.save()
+
     def say(self, text):
         self.message = text
         self.message_time = 3.0
@@ -255,6 +268,10 @@ class Run:
         self.phase = "reward"
         names = list(HACKS)
         self.reward = {"choices": self.rng.sample(names, 3), "pick": 0}
+        if self.tutorial < 2:
+            # first drive is free so the first disk runs
+            self.tree.levels["floppyDrives"] = max(1, self.drives)
+            self.teach("hacks")
         self.save()
 
     def take_reward(self, hack):
@@ -268,7 +285,7 @@ class Run:
 
     def update(self, dt, inputs):
         self.message_time = max(0.0, self.message_time - dt)
-        if self.phase == "reward":
+        if self.phase == "reward" or self.lesson:
             return
 
         fighting = self.phase == "combat"
@@ -286,8 +303,12 @@ class Run:
             if not self.discovered and r["lines"] == 4 and r["shape"] == I and r["spin"] == SPIN_NONE:
                 self.discovered = True
                 self.say("MAGIC DISCOVERED")
-                self.save()
                 self.start_combat()
+                if self.tutorial < 1:
+                    # enough for the hold the intro buys
+                    self.tree.points += self.tree.cost("hold")
+                    self.teach("intro")
+                self.save()
                 return
 
         if not fighting:
@@ -309,7 +330,8 @@ class Run:
             a.grid.send(p.grid, fired)
 
     def save(self):
-        lines = [f"points {self.tree.points}", f"discovered {int(self.discovered)}", f"enemy {self.enemy}"]
+        lines = [f"points {self.tree.points}", f"discovered {int(self.discovered)}", f"enemy {self.enemy}",
+                 f"tutorial {self.tutorial}"]
         lines += [f"{k} {v}" for k, v in self.tree.levels.items()]
         lines += [f"disk {d}" for d in self.disks]
         with open(self.save_path, "w") as f:
@@ -328,6 +350,8 @@ class Run:
                 self.discovered = value == "1"
             elif key == "enemy":
                 self.enemy = int(value)
+            elif key == "tutorial":
+                self.tutorial = int(value)
             elif key == "disk":
                 self.disks.append(value)
             elif key in self.tree.levels:

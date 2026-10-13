@@ -109,7 +109,8 @@ pip install pyxel numpy pillow
 
 O progresso (árvore de magia, pontos, inimigo atual, disquetes) fica em
 `floppy.save`, um arquivo de texto; outro caminho pode ser passado como primeiro
-argumento.
+argumento. `./run.sh --no-lighting` desliga a iluminação da sala (cores cheias,
+sem sombreamento).
 
 ### Controles
 
@@ -137,7 +138,7 @@ Sentado no arcade:
 
 O arcade começa como um jogo de blocos comum, com peças planas. A primeira *quadra*
 (quatro linhas com a peça I) desperta a magia: as peças saltam da tela em 3D e o
-primeiro inimigo aparece ao lado do gabinete. Derrotar o inimigo *n* dá *n* pontos
+primeiro inimigo aparece ao lado do gabinete. Nesse momento a partida pausa para um tutorial: ele dá os 2 pontos da reserva e guia a compra na árvore, depois explica a grade do inimigo, a barra de ataque e o lixo que chega; os disquetes são explicados na primeira vitória, que também dá o primeiro leitor de graça. Derrotar o inimigo *n* dá *n* pontos
 de magia e a escolha de um entre três disquetes (*hacks*), que só funcionam com
 leitores comprados na árvore. Perder apaga os disquetes e volta ao inimigo 1; a
 árvore fica.
